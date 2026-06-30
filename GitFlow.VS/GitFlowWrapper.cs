@@ -35,7 +35,24 @@ namespace GitFlow.VS
                     var featurePrefix = repo.Config.Get<string>("gitflow.prefix.feature");
                     if (featurePrefix == null)
                         return false;
-                    return repo.Head.Name.StartsWith(featurePrefix.Value);
+                    return repo.Head.FriendlyName.StartsWith(featurePrefix.Value);
+                }
+            }
+        }
+
+        public bool IsOnBugfixBranch
+        {
+            get
+            {
+                if (!IsInitialized)
+                    return false;
+
+                using (var repo = new Repository(repoDirectory))
+                {
+                    var bugfixPrefix = repo.Config.Get<string>("gitflow.prefix.bugfix");
+                    if (bugfixPrefix == null)
+                        return false;
+                    return repo.Head.FriendlyName.StartsWith(bugfixPrefix.Value);
                 }
             }
         }
@@ -52,7 +69,7 @@ namespace GitFlow.VS
                     var hotfixPrefix = repo.Config.Get<string>("gitflow.prefix.hotfix");
                     if (hotfixPrefix == null)
                         return false;
-                    return repo.Head.Name.StartsWith(hotfixPrefix.Value);
+                    return repo.Head.FriendlyName.StartsWith(hotfixPrefix.Value);
                 }
             }
         }
@@ -69,7 +86,7 @@ namespace GitFlow.VS
                     var masterBranch = repo.Config.Get<string>("gitflow.branch.master");
                     if (masterBranch == null)
                         return false;
-                    return repo.Head.Name == masterBranch.Value;
+                    return repo.Head.FriendlyName == masterBranch.Value;
                 }
             }
         }
@@ -95,10 +112,14 @@ namespace GitFlow.VS
                     status = "Develop: " + CurrentBranchLeafName;
                 else if (IsOnFeatureBranch)
                     status = "Feature: " + CurrentBranchLeafName;
+                else if (IsOnBugfixBranch)
+                    status = "Bugfix: " + CurrentBranchLeafName;
                 else if (IsOnHotfixBranch)
                     status = "Hotfix: " + CurrentBranchLeafName;
                 else if (IsOnReleaseBranch)
                     status = "Release: " + CurrentBranchLeafName;
+                else if (IsOnSupportBranch)
+                    status = "Support: " + CurrentBranchLeafName;
 
                 return status;
             }
@@ -123,11 +144,11 @@ namespace GitFlow.VS
                 {
                     var prefix = repo.Config.Get<string>("gitflow.prefix.feature").Value;
                     var featureBranches = 
-                        repo.Branches.Where(b => !b.IsRemote && b.Name.StartsWith(prefix) )
+                        repo.Branches.Where(b => !b.IsRemote && b.FriendlyName.StartsWith(prefix) )
                             .Select(c => new BranchItem
                             {
                                 Author = c.Tip.Author.Name,
-                                Name = c.Name.Replace(prefix,""),
+                                Name = c.FriendlyName.Replace(prefix,""),
                                 LastCommit = c.Tip.Author.When,
                                 IsTracking = c.IsTracking,
                                 IsCurrentBranch = c.IsCurrentRepositoryHead,
@@ -137,12 +158,12 @@ namespace GitFlow.VS
                             }).ToList();
 
                     var remoteFeatureBranches =
-                        repo.Branches.Where(b => b.IsRemote && b.Name.Contains(prefix)
+                        repo.Branches.Where(b => b.IsRemote && b.FriendlyName.Contains(prefix)
                         && !repo.Branches.Any(br => !br.IsRemote && br.IsTracking && br.TrackedBranch.CanonicalName== b.CanonicalName))
                             .Select(c => new BranchItem
                             {
                                 Author = c.Tip.Author.Name,
-                                Name = c.Name,
+                                Name = c.FriendlyName,
                                 LastCommit = c.Tip.Author.When,
                                 IsTracking = c.IsTracking,
                                 IsCurrentBranch = c.IsCurrentRepositoryHead,
@@ -169,11 +190,11 @@ namespace GitFlow.VS
 				{
 					var prefix = repo.Config.Get<string>("gitflow.prefix.release").Value;
 					var releaseBranches =
-						repo.Branches.Where(b => !b.IsRemote && b.Name.StartsWith(prefix))
+						repo.Branches.Where(b => !b.IsRemote && b.FriendlyName.StartsWith(prefix))
 							.Select(c => new BranchItem
 							{
 								Author = c.Tip.Author.Name,
-								Name = c.Name.Replace(prefix, ""),
+								Name = c.FriendlyName.Replace(prefix, ""),
 								LastCommit = c.Tip.Author.When,
 								IsTracking = c.IsTracking,
 								IsCurrentBranch = c.IsCurrentRepositoryHead,
@@ -221,6 +242,14 @@ namespace GitFlow.VS
             return RunGitFlow(gitArguments);
         }
 
+        public IEnumerable<string> AllBugfixes
+        {
+            get
+            {
+                return GetAllBranchesThatStartsWithConfigPrefix("gitflow.prefix.bugfix");
+            }
+        }
+
         public IEnumerable<string> AllReleases
         {
             get
@@ -247,9 +276,9 @@ namespace GitFlow.VS
             {
                 var prefix = repo.Config.Get<string>(config).Value;
                 var gitFlowBranches =
-                    repo.Branches.Where(b => !b.IsRemote && b.Name.StartsWith(prefix)).ToList();
+                    repo.Branches.Where(b => !b.IsRemote && b.FriendlyName.StartsWith(prefix)).ToList();
 
-                return gitFlowBranches.Select(b => b.Name.Replace(prefix, "")).ToList();
+                return gitFlowBranches.Select(b => b.FriendlyName.Replace(prefix, "")).ToList();
             }   
         }
 
@@ -265,7 +294,7 @@ namespace GitFlow.VS
                     var developBranch = repo.Config.Get<string>("gitflow.branch.develop");
                     if (developBranch == null)
                         return false;
-                    return repo.Head.Name == developBranch.Value;
+                    return repo.Head.FriendlyName == developBranch.Value;
                 }
             }
         }
@@ -282,7 +311,43 @@ namespace GitFlow.VS
                     var releasePrefix = repo.Config.Get<string>("gitflow.prefix.release");
                     if (releasePrefix == null)
                         return false;
-                    return repo.Head.Name.StartsWith(releasePrefix.Value);
+                    return repo.Head.FriendlyName.StartsWith(releasePrefix.Value);
+                }
+            }
+        }
+
+        public bool IsOnSupportBranch
+        {
+            get
+            {
+                if (!IsInitialized)
+                    return false;
+
+                using (var repo = new Repository(repoDirectory))
+                {
+                    var supportPrefix = repo.Config.Get<string>("gitflow.prefix.support");
+                    if (supportPrefix == null)
+                        return false;
+                    return repo.Head.FriendlyName.StartsWith(supportPrefix.Value);
+                }
+            }
+        }
+
+        public IEnumerable<string> AllSupports
+        {
+            get
+            {
+                return GetAllBranchesThatStartsWithConfigPrefix("gitflow.prefix.support");
+            }
+        }
+
+        public IEnumerable<string> AllTags
+        {
+            get
+            {
+                using (var repo = new Repository(repoDirectory))
+                {
+                    return repo.Tags.Select(t => t.FriendlyName).OrderByDescending(t => t).ToList();
                 }
             }
         }
@@ -293,7 +358,7 @@ namespace GitFlow.VS
             {
                 using (var repo = new Repository(repoDirectory))
                 {
-                    return repo.Head.Name;
+                    return repo.Head.FriendlyName;
                 }                
             }
         }
@@ -304,12 +369,16 @@ namespace GitFlow.VS
             {
                 using (var repo = new Repository(repoDirectory))
                 {
-                    string fullBranchName = repo.Head.Name;
+                    string fullBranchName = repo.Head.FriendlyName;
                     ConfigurationEntry<string> prefix = null;
 
                     if (IsOnFeatureBranch)
                     {
                         prefix = repo.Config.Get<string>("gitflow.prefix.feature");
+                    }
+                    if (IsOnBugfixBranch)
+                    {
+                        prefix = repo.Config.Get<string>("gitflow.prefix.bugfix");
                     }
                     if (IsOnReleaseBranch)
                     {
@@ -318,6 +387,10 @@ namespace GitFlow.VS
                     if (IsOnHotfixBranch)
                     {
                         prefix = repo.Config.Get<string>("gitflow.prefix.hotfix");
+                    }
+                    if (IsOnSupportBranch)
+                    {
+                        prefix = repo.Config.Get<string>("gitflow.prefix.support");
                     }
                     return prefix != null ? fullBranchName.Replace(prefix.Value, "") : fullBranchName;
                 }
@@ -374,6 +447,37 @@ namespace GitFlow.VS
             }
         }
 
+        public GitFlowCommandResult StartBugfix(string bugfixName)
+        {
+            ValidateGitFlowActionName(bugfixName);
+            string gitArguments = "bugfix start \"" + TrimBranchName(bugfixName) + "\"";
+            return RunGitFlow(gitArguments);
+        }
+
+        public GitFlowCommandResult FinishBugfix(string bugfixName, bool rebaseOnDevelopment = false, bool deleteLocalBranch = true, bool deleteRemoteBranch = true, bool squash = false, bool noFastForward = false)
+        {
+            string gitArguments = "bugfix finish \"" + TrimBranchName(bugfixName) + "\"";
+            if (rebaseOnDevelopment)
+                gitArguments += " -r";
+            if (!deleteLocalBranch)
+                gitArguments += " --keeplocal";
+            if (!deleteRemoteBranch)
+                gitArguments += " --keepremote";
+            if (squash)
+                gitArguments += " --squash";
+            if (noFastForward)
+                gitArguments += " --no-ff";
+
+            if (squash)
+            {
+                return RunGitFlow(gitArguments, 15 * 60 * 1000);
+            }
+            else
+            {
+                return RunGitFlow(gitArguments);
+            }
+        }
+
         public GitFlowCommandResult StartRelease(string releaseName)
         {
             ValidateGitFlowActionName(releaseName);
@@ -413,16 +517,28 @@ namespace GitFlow.VS
 			return RunGitFlow(gitArguments);
         }
 
-        public GitFlowCommandResult StartHotfix(string hotfixName)
+        public GitFlowCommandResult StartHotfix(string hotfixName, string baseBranch = null)
         {
             ValidateGitFlowActionName(hotfixName);
-            string gitArguments = "hotfix start \"" + TrimBranchName(hotfixName) + "\"";
+            string safeName = hotfixName.Trim().Replace(" ", "-");
+            string gitArguments = "hotfix start \"" + safeName + "\"";
+            if (!String.IsNullOrEmpty(baseBranch))
+                gitArguments += " \"" + baseBranch.Trim() + "\"";
+            return RunGitFlow(gitArguments);
+        }
+
+        public GitFlowCommandResult StartSupport(string supportName, string baseBranch)
+        {
+            ValidateGitFlowActionName(supportName);
+            if (String.IsNullOrEmpty(baseBranch))
+                throw new ArgumentException("Base tag or commit is required to start a support branch");
+            string gitArguments = "support start \"" + TrimBranchName(supportName) + "\" \"" + baseBranch.Trim() + "\"";
             return RunGitFlow(gitArguments);
         }
 
         public GitFlowCommandResult FinishHotfix(string hotifxName, string tagMessage = null, bool deleteBranch = true, bool forceDeletion = false, bool pushChanges = false)
         {
-            string gitArguments = "hotfix finish \"" + TrimBranchName(hotifxName) + "\"";
+            string gitArguments = "hotfix finish \"" + hotifxName.Trim() + "\"";
             if (!String.IsNullOrEmpty(tagMessage))
             {
                 gitArguments += " -m \"" + tagMessage + "\"";
@@ -506,7 +622,7 @@ namespace GitFlow.VS
                     }
                     else if (IsBugfixBranchQuery(input.ToString()))
                     {
-                        p.StandardInput.Write(settings.FeatureBranch + "\n");
+                        p.StandardInput.Write(settings.BugfixBranch + "\n");
                         Output.Append(input);
                         OnCommandOutputDataReceived(new CommandOutputEventArgs(input + Environment.NewLine));
                         input = new StringBuilder();

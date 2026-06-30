@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Diagnostics;
 using System.IO;
 using System.IO.Compression;
@@ -117,8 +117,8 @@ namespace GitFlow.VS.Tests
             {
                 var branches = repo.Branches.Where(b => !b.IsRemote).ToList();
                 Assert.AreEqual(2, branches.Count());
-                Assert.IsTrue(branches.Any(b => b.Name == "master"));
-                Assert.IsTrue(branches.Any(b => b.Name == "develop"));
+                Assert.IsTrue(branches.Any(b => b.FriendlyName == "master"));
+                Assert.IsTrue(branches.Any(b => b.FriendlyName == "develop"));
             }
         }
 
@@ -150,7 +150,7 @@ namespace GitFlow.VS.Tests
 
 			using (var repo = new Repository(sampleRepoPath))
 			{
-				Assert.IsTrue(repo.Branches.Any(b => !b.IsRemote && b.Name == "feature/X"));
+				Assert.IsTrue(repo.Branches.Any(b => !b.IsRemote && b.FriendlyName == "feature/X"));
 			}
 		}
 
@@ -167,7 +167,7 @@ namespace GitFlow.VS.Tests
 
             using (var repo = new Repository(sampleRepoPath))
             {
-                Assert.IsTrue(repo.Branches.Any(b => !b.IsRemote && b.Name == "feature/X"));
+                Assert.IsTrue(repo.Branches.Any(b => !b.IsRemote && b.FriendlyName == "feature/X"));
             }
         }
 
@@ -212,7 +212,7 @@ namespace GitFlow.VS.Tests
 
             using (var repo = new Repository(sampleRepoPath))
             {
-                Assert.IsTrue(repo.Branches.Any(b => !b.IsRemote && b.Name == "feature/X"));
+                Assert.IsTrue(repo.Branches.Any(b => !b.IsRemote && b.FriendlyName == "feature/X"));
             }
         }
 
@@ -234,7 +234,7 @@ namespace GitFlow.VS.Tests
 
             using (var repo = new Repository(sampleRepoPath))
             {
-                Assert.IsTrue(repo.Branches.Any(b => !b.IsRemote && b.Name == "feature/Feature-X"));
+                Assert.IsTrue(repo.Branches.Any(b => !b.IsRemote && b.FriendlyName == "feature/Feature-X"));
             }
         }
 
@@ -266,8 +266,8 @@ namespace GitFlow.VS.Tests
 
             using (var repo = new Repository(sampleRepoPath))
             {
-                Assert.IsTrue(repo.Branches.Any(b => !b.IsRemote && b.Name == "feature/X"));
-                Assert.IsTrue(repo.Branches.Any(b => !b.IsRemote && b.Name == "feature/Y"));
+                Assert.IsTrue(repo.Branches.Any(b => !b.IsRemote && b.FriendlyName == "feature/X"));
+                Assert.IsTrue(repo.Branches.Any(b => !b.IsRemote && b.FriendlyName == "feature/Y"));
             }
         }
 
@@ -281,7 +281,7 @@ namespace GitFlow.VS.Tests
             using (var repo = new Repository(sampleRepoPath))
             {
                 //Feature branch should be deleted (default option)
-                Assert.IsFalse(repo.Branches.Any(b => !b.IsRemote && b.Name == "feature/X"));
+                Assert.IsFalse(repo.Branches.Any(b => !b.IsRemote && b.FriendlyName == "feature/X"));
             }
         }
 
@@ -294,7 +294,7 @@ namespace GitFlow.VS.Tests
 
             using (var repo = new Repository(sampleRepoPath))
             {
-                Assert.IsTrue(repo.Branches.Any(b => !b.IsRemote && b.Name == "release/1.0"));
+                Assert.IsTrue(repo.Branches.Any(b => !b.IsRemote && b.FriendlyName == "release/1.0"));
             }
         }
 
@@ -308,7 +308,7 @@ namespace GitFlow.VS.Tests
             using (var repo = new Repository(sampleRepoPath))
             {
                 //Release branch should be deleted (default option)
-                Assert.IsFalse(repo.Branches.Any(b => !b.IsRemote && b.Name == "release/1.0"));
+                Assert.IsFalse(repo.Branches.Any(b => !b.IsRemote && b.FriendlyName == "release/1.0"));
             }
         }
 
@@ -321,7 +321,7 @@ namespace GitFlow.VS.Tests
 
             using (var repo = new Repository(sampleRepoPath))
             {
-                Assert.IsTrue(repo.Branches.Any(b => !b.IsRemote && b.Name == "hotfix/hf1"));
+                Assert.IsTrue(repo.Branches.Any(b => !b.IsRemote && b.FriendlyName == "hotfix/hf1"));
             }
         }
 
@@ -335,7 +335,7 @@ namespace GitFlow.VS.Tests
             using (var repo = new Repository(sampleRepoPath))
             {
                 //Hotfix branch should be deleted (default option)
-                Assert.IsFalse(repo.Branches.Any(b => !b.IsRemote && b.Name == "hotfix/hf1"));
+                Assert.IsFalse(repo.Branches.Any(b => !b.IsRemote && b.FriendlyName == "hotfix/hf1"));
             }
         }
 
@@ -424,3 +424,4 @@ namespace GitFlow.VS.Tests
 
 
 }
+

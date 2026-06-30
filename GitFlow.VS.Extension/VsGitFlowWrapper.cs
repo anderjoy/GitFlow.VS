@@ -5,12 +5,13 @@ namespace GitFlowVS.Extension
 {
     public class VsGitFlowWrapper : GitFlowWrapper
     {
-        public VsGitFlowWrapper(string repoPath,IVsOutputWindowPane outputWindow)
+        public VsGitFlowWrapper(string repoPath, IVsOutputWindowPane outputWindow)
             : base(repoPath)
         {
+#pragma warning disable VSTHRD010 // OutputStringThreadSafe is designed for background-thread use
             CommandOutputDataReceived += (o, args) => outputWindow.OutputStringThreadSafe(args.Output);
             CommandErrorDataReceived += (o, args) => outputWindow.OutputStringThreadSafe(args.Output);
+#pragma warning restore VSTHRD010
         }
-
     }
 }

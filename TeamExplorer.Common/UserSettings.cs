@@ -14,6 +14,9 @@ namespace TeamExplorer.Common
         {
             get
             {
+                if (ServiceProvider == null)
+                    return Guid.NewGuid().ToString();
+
                 SettingsManager settingsManager = new ShellSettingsManager(UserSettings.ServiceProvider);
                 var settings = settingsManager.GetWritableSettingsStore(SettingsScope.UserSettings);
 

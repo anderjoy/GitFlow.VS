@@ -4,13 +4,13 @@ using System.ComponentModel.Composition;
 using System.IO;
 using System.Linq;
 using System.Reflection;
-using System.Windows.Threading;
 using GitFlow.VS;
 using GitFlowVS.Extension.UI;
 using Microsoft.TeamFoundation.Controls;
 using Microsoft.VisualStudio.Shell;
 using Microsoft.VisualStudio.Shell.Interop;
 using Microsoft.VisualStudio.TeamFoundation.Git.Extensibility;
+using Microsoft.VisualStudio.Threading;
 using TeamExplorer.Common;
 
 namespace GitFlowVS.Extension
@@ -55,9 +55,13 @@ namespace GitFlowVS.Extension
             foreach (var section in teamExplorerSections.Where(s => s is IGitFlowSection))
             {
                 ITeamExplorerSection section1 = section;
-                System.Windows.Application.Current.Dispatcher.BeginInvoke(DispatcherPriority.Background,
-                    new Action(() =>
-                        ((IGitFlowSection)section1).UpdateVisibleState()));
+#pragma warning disable VSSDK007
+                ThreadHelper.JoinableTaskFactory.RunAsync(async () =>
+                {
+                    await ThreadHelper.JoinableTaskFactory.SwitchToMainThreadAsync();
+                    ((IGitFlowSection)section1).UpdateVisibleState();
+                }).FileAndForget("gitflow/refresh");
+#pragma warning restore VSSDK007
             }
             ui.Refresh();
         }
@@ -74,13 +78,19 @@ namespace GitFlowVS.Extension
                 gitService.PropertyChanged += OnGitServicePropertyChanged;
             }
 
-            var outWindow = Package.GetGlobalService(typeof(SVsOutputWindow)) as IVsOutputWindow;
-            if (outWindow != null)
+            #pragma warning disable VSSDK007
+            ThreadHelper.JoinableTaskFactory.RunAsync(async () =>
             {
-                var customGuid = new Guid("B85225F6-B15E-4A8A-AF6E-2BE96A4FE672");
-                outWindow.CreatePane(ref customGuid, "GitFlow.VS", 1, 1);
-                outWindow.GetPane(ref customGuid, out outputWindow);
-            }
+                await ThreadHelper.JoinableTaskFactory.SwitchToMainThreadAsync();
+                var outWindow = Package.GetGlobalService(typeof(SVsOutputWindow)) as IVsOutputWindow;
+                if (outWindow != null)
+                {
+                    var customGuid = new Guid("B85225F6-B15E-4A8A-AF6E-2BE96A4FE672");
+                    outWindow.CreatePane(ref customGuid, "GitFlow.VS", 1, 1);
+                    outWindow.GetPane(ref customGuid, out outputWindow);
+                }
+            }).FileAndForget("gitflow/outputwindow");
+#pragma warning restore VSSDK007
 
             ui = new GitFlowPageUI();
             PageContent = ui;
@@ -93,7 +103,11 @@ namespace GitFlowVS.Extension
 
         public static void ActiveOutputWindow()
         {
-            OutputWindow?.Activate();
+            ThreadHelper.JoinableTaskFactory.Run(async () =>
+            {
+                await ThreadHelper.JoinableTaskFactory.SwitchToMainThreadAsync();
+                OutputWindow?.Activate();
+            });
         }
 
         public static bool GitFlowIsInstalled
@@ -119,10 +133,13 @@ namespace GitFlowVS.Extension
 
         public static void ShowPage(string page)
         {
-            System.Windows.Application.Current.Dispatcher.BeginInvoke(DispatcherPriority.Background,
-                new Action(() =>
-                    teamExplorer?.NavigateToPage(new Guid(page), null)));
-
+#pragma warning disable VSSDK007
+            ThreadHelper.JoinableTaskFactory.RunAsync(async () =>
+            {
+                await ThreadHelper.JoinableTaskFactory.SwitchToMainThreadAsync();
+                teamExplorer?.NavigateToPage(new Guid(page), null);
+            }).FileAndForget("gitflow/navigation");
+#pragma warning restore VSSDK007
         }
     }
 }

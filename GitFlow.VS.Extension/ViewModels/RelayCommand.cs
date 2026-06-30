@@ -53,9 +53,9 @@ namespace GitFlowVS.Extension.ViewModels
             return canExecute != null && canExecute(parameter);
         }
 
-        public async void Execute(object parameter)
+        public void Execute(object parameter)
         {
-            await Task.Run(() => execute(parameter));
+            _ = Task.Run(() => execute(parameter));
         }
 
         public void OnCanExecuteChanged()

@@ -2,6 +2,8 @@ using System;
 using System.Windows;
 using System.Windows.Input;
 using GitFlow.VS;
+using Microsoft.VisualStudio.Shell;
+using Microsoft.VisualStudio.Threading;
 
 namespace GitFlowVS.Extension.ViewModels
 {
@@ -10,8 +12,10 @@ namespace GitFlowVS.Extension.ViewModels
         private string master;
         private string develop;
         private string featurePrefix;
+        private string bugfixPrefix;
         private string releasePrefix;
         private string hotfixPrefix;
+        private string supportPrefix;
         private string versionTagPrefix;
         private Visibility initGridVisibility;
 
@@ -34,8 +38,10 @@ namespace GitFlowVS.Extension.ViewModels
             Master = "master";
             Develop = "develop";
             FeaturePrefix = "feature/";
+            BugfixPrefix = "bugfix/";
             ReleasePrefix = "release/";
             HotfixPrefix = "hotfix/";
+            SupportPrefix = "support/";
             VersionTagPrefix = "";
 
             InitGridVisibility = Visibility.Hidden;
@@ -72,7 +78,13 @@ namespace GitFlowVS.Extension.ViewModels
                 Logger.Event("Init");
                 if (GitFlowPage.ActiveRepo != null)
                 {
-                    GitFlowPage.OutputWindow.Activate();
+                    #pragma warning disable VSSDK007
+                    ThreadHelper.JoinableTaskFactory.RunAsync(async () =>
+                    {
+                        await ThreadHelper.JoinableTaskFactory.SwitchToMainThreadAsync();
+                        GitFlowPage.OutputWindow?.Activate();
+                    }).FileAndForget("gitflow/activateoutput");
+#pragma warning restore VSSDK007
                     ProgressVisibility = Visibility.Visible;
 
                     var gf = new VsGitFlowWrapper(GitFlowPage.ActiveRepo.RepositoryPath, GitFlowPage.OutputWindow);
@@ -81,8 +93,10 @@ namespace GitFlowVS.Extension.ViewModels
                         DevelopBranch = Develop,
                         MasterBranch = Master,
                         FeatureBranch = FeaturePrefix,
+                        BugfixBranch = BugfixPrefix,
                         ReleaseBranch = ReleasePrefix,
                         HotfixBranch = HotfixPrefix,
+                        SupportBranch = SupportPrefix,
                         VersionTag = VersionTagPrefix
                     });
                     if (!result.Success)
@@ -136,6 +150,17 @@ namespace GitFlowVS.Extension.ViewModels
             }
         }
 
+        public string BugfixPrefix
+        {
+            get { return bugfixPrefix; }
+            set
+            {
+                if (value == bugfixPrefix) return;
+                bugfixPrefix = value;
+                OnPropertyChanged();
+            }
+        }
+
         public string ReleasePrefix
         {
             get { return releasePrefix; }
@@ -154,6 +179,17 @@ namespace GitFlowVS.Extension.ViewModels
             {
                 if (value == hotfixPrefix) return;
                 hotfixPrefix = value;
+                OnPropertyChanged();
+            }
+        }
+
+        public string SupportPrefix
+        {
+            get { return supportPrefix; }
+            set
+            {
+                if (value == supportPrefix) return;
+                supportPrefix = value;
                 OnPropertyChanged();
             }
         }
