@@ -34,7 +34,7 @@ namespace GitFlow.VS.Tests
         public void RunInstallScript()
         {
             string installationPath =
-                @"C:\Users\jakobe\Source\Repos\GitFlow.VS\GitFlow.VS.Extension";
+                @"C:\Users\ander\source\repos\GitFlow.VS\GitFlow.VS.Extension";
 
             var gitInstallPath = GitHelper.GetGitInstallationPath();
             var proc = new Process
@@ -44,7 +44,7 @@ namespace GitFlow.VS.Tests
                     FileName = "powershell.exe",
                     WorkingDirectory = Path.Combine(installationPath, "Dependencies"),
                     UseShellExecute = true,
-                    Arguments = String.Format(@"-ExecutionPolicy ByPass -NoLogo -NoProfile  -File ""C:\Users\jakobe\Source\Repos\GitFlow.VS\GitFlow.VS.Extension\Dependencies\Install.ps1"" ""{0}""", gitInstallPath),
+                    Arguments = String.Format(@"-ExecutionPolicy ByPass -NoLogo -NoProfile  -File ""C:\Users\ander\source\repos\GitFlow.VS\GitFlow.VS.Extension\Dependencies\Install.ps1"" ""{0}""", gitInstallPath),
                     Verb = "runas",
                     LoadUserProfile = true
                 }
@@ -402,9 +402,268 @@ namespace GitFlow.VS.Tests
         public void ParseHooksAndFiltersQuery()
         {
             var gf = new GitFlowWrapper(sampleRepoPath);
-            const string query = "Hooks and filters directory? [c:/Users/jakobe/Source/Repos/GitFlowTest/.git/hooks]";
+            const string query = "Hooks and filters directory? [c:/Users/ander/source/repos/GitFlowTest/.git/hooks]";
             Assert.IsTrue(gf.IsHooksAndFiltersQuery(query));
         }
+
+        #region Support
+
+        [TestMethod]
+        public void StartSupportShouldPutUsOnSupportBranch()
+        {
+            var gf = new GitFlowWrapper(sampleRepoPath);
+            gf.Init(new GitFlowRepoSettings());
+            gf.StartSupport("4.0.x", "master");
+
+            Assert.IsTrue(gf.IsOnSupportBranch);
+        }
+
+        [TestMethod]
+        public void StartSupport()
+        {
+            var gf = new GitFlowWrapper(sampleRepoPath);
+            gf.Init(new GitFlowRepoSettings());
+            gf.StartSupport("4.0.x", "master");
+
+            using (var repo = new Repository(sampleRepoPath))
+            {
+                Assert.IsTrue(repo.Branches.Any(b => !b.IsRemote && b.FriendlyName == "support/4.0.x"));
+            }
+        }
+
+        [TestMethod]
+        public void GetAllSupports()
+        {
+            var gf = new GitFlowWrapper(sampleRepoPath);
+            gf.Init(new GitFlowRepoSettings());
+            gf.StartSupport("4.0.x", "master");
+            gf.StartSupport("5.0.x", "master");
+
+            Assert.AreEqual(2, gf.AllSupports.Count());
+        }
+
+        [TestMethod]
+        public void GetStatusOnSupportBranch()
+        {
+            var gf = new GitFlowWrapper(sampleRepoPath);
+            gf.Init(new GitFlowRepoSettings());
+            gf.StartSupport("4.0.x", "master");
+
+            Assert.AreEqual("4.0.x", gf.CurrentBranchLeafName);
+            Assert.AreEqual("Support: 4.0.x", gf.CurrentStatus);
+        }
+
+        [TestMethod]
+        public void ParseSupportBranchQuery()
+        {
+            var gf = new GitFlowWrapper(sampleRepoPath);
+            const string query = "Support branches? [support/]";
+            Assert.IsTrue(gf.IsSupportBranchQuery(query));
+        }
+
+        #endregion
+
+        #region Hotfix from Support
+
+        [TestMethod]
+        public void StartHotfixFromSupportBranchShouldPutUsOnHotfixBranch()
+        {
+            var gf = new GitFlowWrapper(sampleRepoPath);
+            gf.Init(new GitFlowRepoSettings());
+            gf.StartSupport("4.0.x", "master");
+            gf.StartHotfix("4.0.1", gf.CurrentBranch);
+
+            Assert.IsTrue(gf.IsOnHotfixBranch);
+        }
+
+        [TestMethod]
+        public void StartHotfixFromSupportBranchShouldCreateHotfixBranch()
+        {
+            var gf = new GitFlowWrapper(sampleRepoPath);
+            gf.Init(new GitFlowRepoSettings());
+            gf.StartSupport("4.0.x", "master");
+            var supportBranch = gf.CurrentBranch;
+            gf.StartHotfix("4.0.1", supportBranch);
+
+            using (var repo = new Repository(sampleRepoPath))
+            {
+                Assert.IsTrue(repo.Branches.Any(b => !b.IsRemote && b.FriendlyName == "hotfix/4.0.1"));
+            }
+        }
+
+        [TestMethod]
+        public void FinishHotfixFromSupportBranch()
+        {
+            var gf = new GitFlowWrapper(sampleRepoPath);
+            gf.Init(new GitFlowRepoSettings());
+            gf.StartSupport("4.0.x", "master");
+            gf.StartHotfix("4.0.1", gf.CurrentBranch);
+            gf.FinishHotfix("4.0.1");
+
+            using (var repo = new Repository(sampleRepoPath))
+            {
+                // Hotfix branch should be deleted (default option)
+                Assert.IsFalse(repo.Branches.Any(b => !b.IsRemote && b.FriendlyName == "hotfix/4.0.1"));
+            }
+        }
+
+        [TestMethod]
+        public void HotfixNameWithSlashShouldPreserveFullName()
+        {
+            var gf = new GitFlowWrapper(sampleRepoPath);
+            gf.Init(new GitFlowRepoSettings());
+            gf.StartSupport("4.0.x", "master");
+            gf.StartHotfix("4.0.x/4.0.1");
+
+            using (var repo = new Repository(sampleRepoPath))
+            {
+                Assert.IsTrue(repo.Branches.Any(b => !b.IsRemote && b.FriendlyName == "hotfix/4.0.x/4.0.1"));
+            }
+        }
+
+        [TestMethod]
+        public void FinishHotfixWithSlashNameShouldPreserveFullName()
+        {
+            var gf = new GitFlowWrapper(sampleRepoPath);
+            gf.Init(new GitFlowRepoSettings());
+            gf.StartSupport("4.0.x", "master");
+            gf.StartHotfix("4.0.x/4.0.1");
+            gf.FinishHotfix("4.0.x/4.0.1");
+
+            using (var repo = new Repository(sampleRepoPath))
+            {
+                // Branch with slash name should be deleted (default option)
+                Assert.IsFalse(repo.Branches.Any(b => !b.IsRemote && b.FriendlyName == "hotfix/4.0.x/4.0.1"));
+            }
+        }
+
+        #endregion
+
+        #region Bugfix
+
+        [TestMethod]
+        public void StartBugfixShouldPutUsOnBugfixBranch()
+        {
+            var gf = new GitFlowWrapper(sampleRepoPath);
+            gf.Init(new GitFlowRepoSettings());
+            gf.StartBugfix("bf1");
+
+            Assert.IsTrue(gf.IsOnBugfixBranch);
+        }
+
+        [TestMethod]
+        public void StartBugfix()
+        {
+            var gf = new GitFlowWrapper(sampleRepoPath);
+            gf.Init(new GitFlowRepoSettings());
+            gf.StartBugfix("bf1");
+
+            using (var repo = new Repository(sampleRepoPath))
+            {
+                Assert.IsTrue(repo.Branches.Any(b => !b.IsRemote && b.FriendlyName == "bugfix/bf1"));
+            }
+        }
+
+        [TestMethod]
+        public void GetAllBugfixes()
+        {
+            var gf = new GitFlowWrapper(sampleRepoPath);
+            gf.Init(new GitFlowRepoSettings());
+            gf.StartBugfix("bf1");
+            gf.StartBugfix("bf2");
+
+            Assert.AreEqual(2, gf.AllBugfixes.Count());
+        }
+
+        [TestMethod]
+        public void FinishBugfixShouldRemoveIt()
+        {
+            var gf = new GitFlowWrapper(sampleRepoPath);
+            gf.Init(new GitFlowRepoSettings());
+            gf.StartBugfix("bf1");
+            gf.StartBugfix("bf2");
+
+            Assert.AreEqual(2, gf.AllBugfixes.Count());
+
+            gf.FinishBugfix("bf1");
+
+            Assert.AreEqual(1, gf.AllBugfixes.Count());
+        }
+
+        [TestMethod]
+        public void FinishBugfix()
+        {
+            var gf = new GitFlowWrapper(sampleRepoPath);
+            gf.Init(new GitFlowRepoSettings());
+            gf.StartBugfix("bf1");
+            gf.FinishBugfix("bf1");
+
+            using (var repo = new Repository(sampleRepoPath))
+            {
+                // Bugfix branch should be deleted (default option)
+                Assert.IsFalse(repo.Branches.Any(b => !b.IsRemote && b.FriendlyName == "bugfix/bf1"));
+            }
+        }
+
+        [TestMethod]
+        public void FinishBugfixKeepLocalBranch()
+        {
+            var gf = new GitFlowWrapper(sampleRepoPath);
+            gf.Init(new GitFlowRepoSettings());
+            gf.StartBugfix("bf1");
+
+            Assert.AreEqual(1, gf.AllBugfixes.Count());
+
+            gf.FinishBugfix("bf1", deleteLocalBranch: false);
+
+            using (var repo = new Repository(sampleRepoPath))
+            {
+                Assert.IsTrue(repo.Branches.Any(b => !b.IsRemote && b.FriendlyName == "bugfix/bf1"));
+            }
+        }
+
+        [TestMethod]
+        public void GetStatusOnBugfixBranch()
+        {
+            var gf = new GitFlowWrapper(sampleRepoPath);
+            gf.Init(new GitFlowRepoSettings());
+            gf.StartBugfix("bf1");
+
+            Assert.AreEqual("bf1", gf.CurrentBranchLeafName);
+            Assert.AreEqual("Bugfix: bf1", gf.CurrentStatus);
+        }
+
+        [TestMethod]
+        public void StartBugfixWithSpaceShouldReplaceSpaceWithHyphen()
+        {
+            var gf = new GitFlowWrapper(sampleRepoPath);
+            gf.Init(new GitFlowRepoSettings());
+            gf.StartBugfix("Fix Issue");
+
+            using (var repo = new Repository(sampleRepoPath))
+            {
+                Assert.IsTrue(repo.Branches.Any(b => !b.IsRemote && b.FriendlyName == "bugfix/Fix-Issue"));
+            }
+        }
+
+        [TestMethod]
+        [ExpectedException(typeof(ArgumentException))]
+        public void CreateBugfixWithApostropheShouldReportAsInvalidWork()
+        {
+            var gf = new GitFlowWrapper(sampleRepoPath);
+            gf.Init(new GitFlowRepoSettings());
+            gf.StartBugfix("bf1'");
+        }
+
+        [TestMethod]
+        public void ParseBugfixBranchQuery()
+        {
+            var gf = new GitFlowWrapper(sampleRepoPath);
+            const string query = "Bugfix branches? [bugfix/]";
+            Assert.IsTrue(gf.IsBugfixBranchQuery(query));
+        }
+
+        #endregion
 
         //Necessary in order to delete directory containing readonly files
         public static void DeleteReadOnlyDirectory(string directory)
